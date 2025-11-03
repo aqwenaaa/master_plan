@@ -82,7 +82,7 @@ Interaksi utama:
 ## 🎥 Demo Praktikum 1
 
 **GIF dokumentasi (Langkah 9 hingga tugas praktikum):**  
-![Praktikum 1 GIF](\images\praktikum1.gif)
+![Praktikum 1 GIF](\images\praktikum1gif.gif)
 
 > Rekam urutan: tekan **+**, isi deskripsi, centang selesai (lihat teks tercoret), hapus item, serta perilaku list saat entry bertambah.
 
