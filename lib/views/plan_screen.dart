@@ -1,7 +1,5 @@
-// lib/screens/plan_screen.dart
 import 'package:flutter/material.dart';
 import '../models/data_layer.dart';
-import '../provider/plan_provider.dart';
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
@@ -11,7 +9,10 @@ class PlanScreen extends StatefulWidget {
 }
 
 class _PlanScreenState extends State<PlanScreen> {
-  // Langkah 10: ScrollController (boleh tanpa listener unfocus)
+  // Langkah 6: state utama
+  Plan plan = const Plan();
+
+  // Langkah 10: ScrollController (tanpa listener unfocus otomatis)
   late final ScrollController scrollController;
 
   @override
@@ -22,54 +23,39 @@ class _PlanScreenState extends State<PlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final planNotifier = PlanProvider.of(context);
-
     return Scaffold(
+      // Ganti dengan nama panggilan Anda
       appBar: AppBar(title: const Text('Master Plan Aqueena Regita')),
-      // Langkah 8: ValueListenableBuilder membangun UI dari plan terkini
-      body: ValueListenableBuilder<Plan>(
-        valueListenable: planNotifier,
-        builder: (context, plan, child) {
-          return Column(
-            children: [
-              Expanded(child: _buildList(plan)), // Langkah 7
-              SafeArea( // Langkah 9
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Text(plan.completenessMessage),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: _buildAddTaskButton(context), // Langkah 5
+      body: _buildList(),
+      floatingActionButton: _buildAddTaskButton(),
     );
   }
 
-  // Langkah 5: pakai provider untuk menambah Task
-  Widget _buildAddTaskButton(BuildContext context) {
-    final planNotifier = PlanProvider.of(context);
+  // Langkah 7: tombol tambah task
+  Widget _buildAddTaskButton() {
     return FloatingActionButton(
       child: const Icon(Icons.add),
       onPressed: () {
-        final current = planNotifier.value;
-        planNotifier.value = Plan(
-          name: current.name,
-          tasks: List<Task>.from(current.tasks)..add(const Task()),
-        );
+        setState(() {
+          plan = Plan(
+            name: plan.name,
+            tasks: List<Task>.from(plan.tasks)..add(const Task()),
+          );
+        });
       },
     );
   }
 
-  // Langkah 7: _buildList menerima Plan
-  Widget _buildList(Plan plan) {
+  // Langkah 8 + 12: ListView dengan controller & keyboardDismissBehavior
+  Widget _buildList() {
     if (plan.tasks.isEmpty) {
       return const Center(
         child: Text('Belum ada rencana. Ketuk tombol + untuk menambah.'),
       );
     }
 
+    // Jika ingin paksa tutup keyboard saat user benar-benar drag,
+    // bisa dibalut NotificationListener<UserScrollNotification>.
     return ListView.builder(
       controller: scrollController,
       keyboardDismissBehavior:
@@ -80,27 +66,27 @@ class _PlanScreenState extends State<PlanScreen> {
       itemCount: plan.tasks.length,
       itemBuilder: (context, index) {
         final task = plan.tasks[index];
-        return _buildTaskTile(task, index, context); // Langkah 6
+        return _buildTaskTile(task, index);
       },
     );
   }
 
-  // Langkah 6: setiap baris task dimutasi via provider
-  Widget _buildTaskTile(Task task, int index, BuildContext context) {
-    final planNotifier = PlanProvider.of(context);
-    final fieldKey = ValueKey('task-field-$index'); // key stabil
+  // Langkah 9: setiap baris task dapat diedit & dicentang
+  Widget _buildTaskTile(Task task, int index) {
+    // KEY HARUS STABIL — jangan masukkan description/complete
+    final fieldKey = ValueKey('task-field-$index');
 
     return ListTile(
       leading: Checkbox(
         value: task.complete,
         onChanged: (checked) {
-          final current = planNotifier.value;
-          final newTasks = List<Task>.from(current.tasks);
-          newTasks[index] = Task(
-            description: task.description,
-            complete: checked ?? false,
+          _updateTaskAt(
+            index,
+            Task(
+              description: task.description,
+              complete: checked ?? false,
+            ),
           );
-          planNotifier.value = Plan(name: current.name, tasks: newTasks);
         },
       ),
       title: TextFormField(
@@ -115,27 +101,40 @@ class _PlanScreenState extends State<PlanScreen> {
           color: task.complete ? Colors.grey : null,
         ),
         onChanged: (text) {
-          final current = planNotifier.value;
-          final newTasks = List<Task>.from(current.tasks);
-          newTasks[index] = Task(
-            description: text,
-            complete: task.complete,
+          _updateTaskAt(
+            index,
+            Task(
+              description: text,
+              complete: task.complete,
+            ),
           );
-          planNotifier.value = Plan(name: current.name, tasks: newTasks);
         },
       ),
       trailing: IconButton(
         tooltip: 'Hapus',
         icon: const Icon(Icons.close),
-        onPressed: () {
-          final current = planNotifier.value;
-          final newTasks = List<Task>.from(current.tasks)..removeAt(index);
-          planNotifier.value = Plan(name: current.name, tasks: newTasks);
-        },
+        onPressed: () => _removeTaskAt(index),
       ),
     );
   }
 
+  // Helper immutable update
+  void _updateTaskAt(int index, Task newTask) {
+    setState(() {
+      final newTasks = List<Task>.from(plan.tasks);
+      newTasks[index] = newTask;
+      plan = Plan(name: plan.name, tasks: newTasks);
+    });
+  }
+
+  void _removeTaskAt(int index) {
+    setState(() {
+      final newTasks = List<Task>.from(plan.tasks)..removeAt(index);
+      plan = Plan(name: plan.name, tasks: newTasks);
+    });
+  }
+
+  // Langkah 13: bebaskan controller
   @override
   void dispose() {
     scrollController.dispose();
